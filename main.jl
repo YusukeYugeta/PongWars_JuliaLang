@@ -2,13 +2,13 @@ using Plots
 using LinearAlgebra
 
 # Parameters    
-N = 3 # particle number
+N = 2 # particle number
 ilast = 10000
-dt = 0.01
-Lx = 10; Ly = 10;
-Nx = 21; Ny = 21;
+dt = 0.05
+Lx = 20; Ly = 20;
+Nx = 5; Ny = 5;
 eps_x = Lx/Nx; eps_y = Ly/Ny
-anime_bool = true #false
+anime_bool = false
 
 area_xaxis = LinRange(eps_x/2, Lx-eps_x/2, Nx+1); area_yaxis = LinRange(eps_y/2, Ly-eps_y/2, Ny+1)
 
@@ -17,7 +17,7 @@ function initialize()
 
     velocities = rand(2, N).-0.5 
     for i in 1:N
-        velocities[:, i] = velocities[:, i] ./ norm(velocities[:, i])
+        velocities[:, i] = velocities[:, i] ./ norm(velocities[:, i]) 
     end
 
     position_generate()
@@ -96,7 +96,7 @@ function area_index(x,y)
 end
 
 function flip_area(x,y,i)
-    global area, Nx, Ny, Lx, Ly, area_tobeplot, N, positions
+    global area, Nx, Ny, Lx, Ly, area_tobeplot, N, positions, velocities
     indx = Int(ceil(x*(Nx+1)/Lx)) + 1
     indy = Int(ceil(y*(Ny+1)/Ly)) + 1
     indx = max(indx, 1); indx = min(indx, Nx+3)
@@ -179,8 +179,12 @@ while i<ilast
 
     scatter!(scatter_handle, positions[1, :], positions[2, :], legend=false, xlims=(0, Lx), ylims=(0, Ly), aspect_ratio=:equal, markersize=10, color=colors)
 
+    if i%100 == 0
+        println("i = ", i," ", compute_scores())
+    end
+
     if anime_bool
-        if i%10 == 0
+        if i%20 == 0
             frame(anim, scatter_handle)
         end
     else
@@ -191,7 +195,7 @@ while i<ilast
 end
 
 if anime_bool
-    gif(anim, "anime.gif", fps = 1000)
+    gif(anim, "anime.gif", fps = 60)
 end
 
 
