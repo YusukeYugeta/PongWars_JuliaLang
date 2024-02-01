@@ -2,15 +2,15 @@ using Plots
 using LinearAlgebra
 
 # Parameters    
-N = 10 # group size
-M = 4 # number of groups
+N = 50 # group size
+M = 2 # number of groups
 p = 1.0 # diffusive parameter
-ilast = 5000
+ilast = 500000
 dt = 0.1
-Lx = 10; Ly = 10;
-Nx = 10; Ny = 10;
+Lx = 15; Ly = 15;
+Nx = Lx; Ny = Ly;
 eps_x = Lx/Nx; eps_y = Ly/Ny
-anime_bool = true
+anime_bool = false#true
 
 area_xaxis = LinRange(eps_x/2, Lx-eps_x/2, Nx+1); area_yaxis = LinRange(eps_y/2, Ly-eps_y/2, Ny+1)
 
@@ -18,17 +18,21 @@ function initialize()
     global positions, velocities, dt, previous_positions, area, area_tobeplot
 
     velocities = rand(2, N*M).-0.5 
-    for i in 1:N*M
-        velocities[:, i] = velocities[:, i] ./ norm(velocities[:, i])
+    for i in 1:M
+        for j in 1:N
+            ind = (i-1)*N+j
+            velocities[:, ind] = velocities[:, ind] ./ norm(velocities[:, ind])
+        end
     end
 
     position_generate()
     previous_positions = positions
 
     area = zeros(Nx+3, Ny+3)
-    
+
     for i in 2:Nx+2
         for j in 2:Ny+2
+
             dist_list = ones(M) * sqrt(Lx^2 + Ly^2)
             dist_list_2 = ones(N) * sqrt(Lx^2 + Ly^2)
             xpos = (i-3/2) * eps_x; ypos = (j-3/2) * eps_y
@@ -123,13 +127,12 @@ function collision_area()
             pos_x_prev = pos_xs_prev[ind]; pos_y_prev = pos_ys_prev[ind]
         
             a_ind = area_index(pos_x, pos_y)
-            a_ind_prev = area_index(pos_x_prev, pos_y_prev)
             # when the particle moves to another area
-            if a_ind != a_ind_prev
-                if (a_ind_prev != area_index(pos_x,pos_y_prev))
+            if a_ind != i
+                if (i != area_index(pos_x,pos_y_prev))
                     velocities[1,ind] = -velocities[1,ind]
                 end
-                if (a_ind_prev != area_index(pos_x_prev,pos_y))
+                if (i != area_index(pos_x_prev,pos_y))
                     velocities[2,ind] = -velocities[2,ind]
                 end
                 if a_ind != 0
@@ -147,7 +150,32 @@ function collision_area()
             flip_area(tobe_flipped[1, ind], tobe_flipped[2, ind], tobe_flipped[3, ind])
         end
     end
+end
 
+function get_scores()
+    global positions, velocities, Nx, Ny, Lx, Ly, area_xaxis, area_yaxis, area
+    scores = zeros(M)
+    for i in 1:Nx
+        for j in 1:Ny
+            scores[Int(area[i+1, j+1])] += 1/Nx/Ny
+        end
+    end
+    return scores
+end
+
+function check_consistency()
+    global positions, velocities, Nx, Ny, Lx, Ly, area_xaxis, area_yaxis, area
+    count = 0
+    for i in 1:M
+        for j in 1:N
+            pos_x = positions[1, (i-1)*N+j]; pos_y = positions[2, (i-1)*N+j]
+            a_ind = area_index(pos_x, pos_y)    
+            if a_ind != i
+                count += 1
+            end
+        end
+    end
+    print("Error count: ", count, "\n")
 end
 
 #main loop
@@ -177,7 +205,13 @@ for i in 1:ilast
 
     scatter_handle = heatmap(area_xaxis, area_yaxis, area_tobeplot, opacity=0.5, range=(0, N+1), colorbar=true, aspect_ratio=:equal, xlims=(0, Lx), ylims=(0, Ly), legend=false, color=colors_heatmap)
 
-    scatter!(scatter_handle, positions[1, :], positions[2, :], legend=false, xlims=(0, Lx), ylims=(0, Ly), aspect_ratio=:equal, markersize=10, color=colors)
+    scatter!(scatter_handle, positions[1, :], positions[2, :], legend=false, xlims=(0, Lx), ylims=(0, Ly), aspect_ratio=:equal, markersize=5, color=colors)
+
+    if i%100 == 1
+        println("step: ", i)
+        println("scores: ", get_scores())
+        check_consistency()
+    end
 
     if anime_bool
         if i%20 == 1
